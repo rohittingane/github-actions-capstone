@@ -1,0 +1,53 @@
+# This is a REUSABLE workflow — it does NOT run on its own.
+# It only runs when another workflow calls it using workflow_call.
+name: Reusable - Docker Build and Push
+
+on:
+    workflow_call:
+        # These values MUST be provided by the caller — no default exists
+        inputs:
+            image_name:
+                required: true # Compulsory — e.g. "myapp"
+                type: string
+            tag:
+                required: true # Compulsory — e.g. "latest" or "sha-abc123"
+                type: string
+
+        # Secrets are sensitive values (never shown in logs)
+        secrets:
+            docker_username:
+                required: true # Docker Hub username
+            docker_token:
+                required: true # Docker Hub password/token
+
+jobs:
+    docker-build-push:
+        runs-on: ubuntu-latest
+
+        # This makes image_url available to OTHER jobs that call this workflow
+        outputs:
+            image_url: ${{ steps.set_output.outputs.image_url }}
+
+        steps:
+            # Step 1: Bring the repository code onto this virtual machine
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            # Step 2: Log in to Docker Hub using the secrets provided
+            - name: Log in to Docker Hub
+              uses: docker/login-action@v3
+              with:
+                  username: ${{ secrets.docker_username }}
+                  password: ${{ secrets.docker_token }}
+
+            # Step 3: Build the Docker image using the Dockerfile, then push it to Docker Hub
+            - name: Build and push Docker image
+              run: |
+                  docker build -t ${{ secrets.docker_username }}/${{ inputs.image_name }}:${{ inputs.tag }} .
+                  docker push ${{ secrets.docker_username }}/${{ inputs.image_name }}:${{ inputs.tag }}
+
+            # Step 4: Save the full image path so the next job (deploy) can use it
+            - name: Set output
+              id: set_output
+              run: |
+                  echo "image_url=${{ secrets.docker_username }}/${{ inputs.image_name }}:${{ inputs.tag }}" >> $GITHUB_OUTPUT
