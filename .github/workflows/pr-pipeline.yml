@@ -1,0 +1,27 @@
+# This workflow runs automatically when someone opens a PR to main,
+# or pushes new commits to an existing PR.
+name: PR Pipeline
+
+on:
+    pull_request:
+        branches:
+            - main # Only trigger for PRs targeting the main branch
+        types:
+            - opened # Trigger when a new PR is opened
+            - synchronize # Trigger when new commits are pushed to the PR
+
+jobs:
+    # Job 1: Call the reusable build-test workflow (from our own repo)
+    call-build-test:
+        uses: ./.github/workflows/reusable-build-test.yml
+        with:
+            python_version: "3.9" # Explicitly stated, even though it's the default
+            run_tests: true # Tests must always run on a PR
+
+    # Job 2: Runs ONLY after call-build-test succeeds, prints a summary message
+    pr-comment:
+        needs: call-build-test # Wait for call-build-test to finish first
+        runs-on: ubuntu-latest
+        steps:
+            - name: Print summary
+              run: 'echo "PR checks passed for branch: ${{ github.head_ref }}"'
