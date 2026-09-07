@@ -1,0 +1,49 @@
+# This workflow runs automatically when code is pushed to the main branch
+# (including when a PR is merged, since that creates a push to main).
+name: Main Pipeline
+
+on:
+    push:
+        branches:
+            - main # Only trigger for pushes to the main branch
+
+jobs:
+    # Job 1: Run tests again as a final safety check before deployment
+    test:
+        uses: ./.github/workflows/reusable-build-test.yml
+        with:
+            python_version: "3.9"
+            run_tests: true
+
+    # Job 2a: Build and push the Docker image tagged as "latest"
+    docker-latest:
+        needs: test # Wait for tests to pass first
+        uses: ./.github/workflows/reusable-docker.yml
+        with:
+            image_name: myapp
+            tag: latest
+        secrets:
+            docker_username: ${{ secrets.DOCKER_USERNAME }}
+            docker_token: ${{ secrets.DOCKER_TOKEN }}
+
+    # Job 2b: Build and push the same image tagged with the commit SHA
+    # (this allows rollback to this exact version later)
+    docker-sha:
+        needs: test # Wait for tests to pass first
+        uses: ./.github/workflows/reusable-docker.yml
+        with:
+            image_name: myapp
+            tag: sha-${{ github.sha }}
+        secrets:
+            docker_username: ${{ secrets.DOCKER_USERNAME }}
+            docker_token: ${{ secrets.DOCKER_TOKEN }}
+
+    # Job 3: Deploy to production (only after BOTH docker jobs succeed)
+    deploy:
+        needs: [docker-latest, docker-sha] # Wait for both image pushes to finish
+        runs-on: ubuntu-latest
+        environment:
+            name: production # Can require manual approval (set in repo Settings)
+        steps:
+            - name: Deploy application
+              run: 'echo "Deploying image: ${{ needs.docker-latest.outputs.image_url }} to production"'
