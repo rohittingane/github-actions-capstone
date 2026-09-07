@@ -1,0 +1,49 @@
+name: Scheduled Health Check
+
+on:
+    schedule:
+        - cron: "0 */12 * * *"
+    workflow_dispatch:
+
+jobs:
+    health-check:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Pull latest Docker image
+              run: docker pull rtingane2611/myapp:latest
+
+            - name: Run container in detached mode
+              run: docker run -d --name health-check-container -p 5000:5000 rtingane2611/myapp:latest
+
+            - name: Wait for container to start
+              run: sleep 5
+
+            - name: Curl health endpoint
+              id: health_check
+              run: |
+                  RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health)
+                  if [ "$RESPONSE" -eq 200 ]; then
+                    echo "status=PASSED" >> $GITHUB_OUTPUT
+                  else
+                    echo "status=FAILED" >> $GITHUB_OUTPUT
+                  fi
+
+            - name: Print result
+              run: 'echo "Health check status: ${{ steps.health_check.outputs.status }}"'
+
+            - name: Stop and remove container
+              if: always()
+              run: |
+                  docker stop health-check-container
+                  docker rm health-check-container
+
+            - name: Create summary
+              if: always()
+              run: |
+                  echo "## Health Check Report" >> $GITHUB_STEP_SUMMARY
+                  echo "- Image: rtingane2611/myapp:latest" >> $GITHUB_STEP_SUMMARY
+                  echo "- Status: ${{ steps.health_check.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- Time: $(date)" >> $GITHUB_STEP_SUMMARY
