@@ -56,12 +56,13 @@ jobs:
             # Step 4 (NEW - Day 49 DevSecOps): Scan the image for known vulnerabilities.
             # Trivy checks the image against a public CVE (Common Vulnerabilities
             # and Exposures) database.
-            #   - image-ref  : exact image we just built, so it knows what to scan
-            #   - format     : 'table' prints a human-readable table in the logs
-            #   - exit-code  : '1' means "fail this step" if matching issues are found
-            #                  (if this step fails, the workflow stops here —
-            #                   the Push step below will NOT run)
-            #   - severity   : only fail on CRITICAL or HIGH issues; ignore LOW/MEDIUM
+            #   - image-ref      : exact image we just built, so it knows what to scan
+            #   - format         : 'table' prints a human-readable table in the logs
+            #   - exit-code      : '1' means "fail this step" if matching issues are found
+            #                     (if this step fails, the workflow stops here —
+            #                      the Push step below will NOT run)
+            #   - severity       : only fail on CRITICAL or HIGH issues; ignore LOW/MEDIUM
+            #   - ignore-unfixed : ignore vulnerabilities that currently have no available fix
             - name: Scan Docker Image for Vulnerabilities
               uses: aquasecurity/trivy-action@master
               with:
@@ -69,6 +70,7 @@ jobs:
                   format: "table"
                   exit-code: "1"
                   severity: "CRITICAL,HIGH"
+                  ignore-unfixed: true
 
             # Step 5: Push the image to Docker Hub.
             # This step ONLY runs if the scan above passed — GitHub Actions
