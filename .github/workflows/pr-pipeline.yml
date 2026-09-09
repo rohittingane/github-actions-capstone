@@ -15,7 +15,7 @@ jobs:
     call-build-test:
         uses: ./.github/workflows/reusable-build-test.yml
         with:
-            python_version: "3.9" # Explicitly stated, even though it's the default
+            python_version: "3.12" # Explicitly stated, even though it's the default
             run_tests: true # Tests must always run on a PR
 
     # Job 2: Runs ONLY after call-build-test succeeds, prints a summary message
