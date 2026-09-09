@@ -20,6 +20,12 @@ on:
             docker_token:
                 required: true # Docker Hub password/token
 
+# Day 49 (DevSecOps): Limit this workflow's permissions to the minimum needed.
+# By default GitHub gives broad permissions — we don't need write access to
+# contents here, only read access to check out the code.
+permissions:
+    contents: read
+
 jobs:
     docker-build-push:
         runs-on: ubuntu-latest
@@ -40,13 +46,41 @@ jobs:
                   username: ${{ secrets.docker_username }}
                   password: ${{ secrets.docker_token }}
 
-            # Step 3: Build the Docker image using the Dockerfile, then push it to Docker Hub
-            - name: Build and push Docker image
+            # Step 3: Build the Docker image ONLY — do NOT push yet.
+            # We build first so we have an actual image to scan in the next step.
+            # Pushing is deliberately delayed until after the vulnerability scan passes.
+            - name: Build Docker image
               run: |
                   docker build -t ${{ secrets.docker_username }}/${{ inputs.image_name }}:${{ inputs.tag }} .
+
+            # Step 4 (NEW - Day 49 DevSecOps): Scan the image for known vulnerabilities.
+            # Trivy checks the image against a public CVE (Common Vulnerabilities
+            # and Exposures) database.
+            #   - image-ref  : exact image we just built, so it knows what to scan
+            #   - format     : 'table' prints a human-readable table in the logs
+            #   - exit-code  : '1' means "fail this step" if matching issues are found
+            #                  (if this step fails, the workflow stops here —
+            #                   the Push step below will NOT run)
+            #   - severity   : only fail on CRITICAL or HIGH issues; ignore LOW/MEDIUM
+            - name: Scan Docker Image for Vulnerabilities
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: "${{ secrets.docker_username }}/${{ inputs.image_name }}:${{ inputs.tag }}"
+                  format: "table"
+                  exit-code: "1"
+                  severity: "CRITICAL,HIGH"
+
+            # Step 5: Push the image to Docker Hub.
+            # This step ONLY runs if the scan above passed — GitHub Actions
+            # automatically skips remaining steps when a previous step fails,
+            # so no extra "if" condition is needed here.
+            - name: Push Docker image
+              run: |
                   docker push ${{ secrets.docker_username }}/${{ inputs.image_name }}:${{ inputs.tag }}
 
-            # Step 4: Save the full image path so the next job (deploy) can use it
+            # Step 6: Save the full image path so the next job (deploy) can use it.
+            # $GITHUB_OUTPUT is a special temporary file GitHub Actions provides —
+            # anything written here as key=value becomes an accessible "output".
             - name: Set output
               id: set_output
               run: |
