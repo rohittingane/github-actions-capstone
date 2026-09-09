@@ -26,13 +26,17 @@ jobs:
         permissions:
             contents: read
         steps:
-            - name: Dependency Review
+            - name: Check Dependencies for Vulnerabilities
               uses: actions/dependency-review-action@v4
+              with:
+                  fail-on-severity: critical
 
     # Job 3: Runs after call-build-test succeeds
     pr-comment:
         needs: call-build-test
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
         steps:
             - name: Print summary
               run: 'echo "PR checks passed for branch: ${{ github.head_ref }}"'
