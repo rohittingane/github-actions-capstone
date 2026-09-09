@@ -3,50 +3,50 @@
 name: Reusable - Build and Test
 
 on:
-    workflow_call:
-        # These are the inputs this workflow can receive from the caller
-        inputs:
-            python_version:
-                required: false # Not compulsory to provide
-                type: string # Must be text (e.g. "3.9")
-                default: "3.9" # Used if caller doesn't provide a value
+  workflow_call:
+    # These are the inputs this workflow can receive from the caller
+    inputs:
+      python_version:
+        required: false # Not compulsory to provide
+        type: string # Must be text (e.g. "3.12")
+        default: "3.12" # Used if caller doesn't provide a value
 
-            run_tests:
-                required: false # Not compulsory to provide
-                type: boolean # Only true or false allowed
-                default: true # By default, tests will run
+      run_tests:
+        required: false # Not compulsory to provide
+        type: boolean # Only true or false allowed
+        default: true # By default, tests will run
 
 jobs:
-    build-and-test:
-        runs-on: ubuntu-latest # Run this job on a fresh Ubuntu Linux machine
+  build-and-test:
+    runs-on: ubuntu-latest # Run this job on a fresh Ubuntu Linux machine
 
-        # This makes the test result available to OTHER jobs that call this workflow
-        outputs:
-            test_result: ${{ steps.run_tests_step.outputs.result }}
+    # This makes the test result available to OTHER jobs that call this workflow
+    outputs:
+      test_result: ${{ steps.run_tests_step.outputs.result }}
 
-        steps:
-            # Step 1: Bring the repository code onto this virtual machine
-            - name: Checkout code
-              uses: actions/checkout@v4
+    steps:
+      # Step 1: Bring the repository code onto this virtual machine
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            # Step 2: Install Python on this virtual machine
-            - name: Set up Python
-              uses: actions/setup-python@v5
-              with:
-                  python-version: ${{ inputs.python_version }} # Uses the input value
+      # Step 2: Install Python on this virtual machine
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }} # Uses the input value
 
-            # Step 3: Install all packages listed in requirements.txt (e.g. Flask)
-            - name: Install dependencies
-              run: pip install -r requirements.txt
+      # Step 3: Install all packages listed in requirements.txt (e.g. Flask)
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
-            # Step 4: Run the health-check test script (only if run_tests input is true)
-            - name: Run tests
-              id: run_tests_step # Naming this step so we can read its output later
-              if: ${{ inputs.run_tests == true }} # Skip this step if run_tests is false
-              run: |
-                  chmod +x test-health.sh              # Give permission to execute the script
-                  if ./test-health.sh; then            # Run the script
-                    echo "result=passed" >> $GITHUB_OUTPUT   # Save "passed" if script succeeded
-                  else
-                    echo "result=failed" >> $GITHUB_OUTPUT   # Save "failed" if script failed
-                  fi
+      # Step 4: Run the health-check test script (only if run_tests input is true)
+      - name: Run tests
+        id: run_tests_step # Naming this step so we can read its output later
+        if: ${{ inputs.run_tests == true }} # Skip this step if run_tests is false
+        run: |
+          chmod +x test-health.sh              # Give permission to execute the script
+          if ./test-health.sh; then            # Run the script
+            echo "result=passed" >> $GITHUB_OUTPUT   # Save "passed" if script succeeded
+          else
+            echo "result=failed" >> $GITHUB_OUTPUT   # Save "failed" if script failed
+          fi
