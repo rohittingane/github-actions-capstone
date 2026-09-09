@@ -12,7 +12,7 @@ jobs:
     test:
         uses: ./.github/workflows/reusable-build-test.yml
         with:
-            python_version: "3.9"
+            python_version: "3.12"
             run_tests: true
 
     # Job 2a: Build and push the Docker image tagged as "latest"
